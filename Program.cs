@@ -6,6 +6,9 @@ using System.Net;
 using System.IO;
 using System.Threading;
 using Microsoft.Extensions.Configuration;
+using System.Diagnostics; //for stopwatch--timer each request time
+using System.Threading.Tasks;//for Task and async/await
+using System.Net.Http; //for HttpClient in test 
 
 
 namespace DNWS
@@ -33,10 +36,17 @@ namespace DNWS
         }
 
         static void Main(string[] args)
-        {
-            Program p = new Program();
-            p.Start();
-        }
+{
+    if (args.Length > 0 && args[0] == "test")
+    {
+        Test.RunTest().Wait(); //'dotnet run test' to run the test
+    }
+    else
+    {
+        Program p = new Program();
+        p.Start(); //'dotnet run' to start the server
+    }
+}
     }
 
     /// <summary>
@@ -154,6 +164,7 @@ namespace DNWS
         /// </summary>
         public void Process()
         {
+            
             NetworkStream ns = new NetworkStream(_client);
             string requestStr = "";
             HTTPRequest request = null;
@@ -297,7 +308,15 @@ namespace DNWS
                     // Get one, show some info
                     _parent.Log("Client accepted:" + clientSocket.RemoteEndPoint.ToString());
                     HTTPProcessor hp = new HTTPProcessor(clientSocket, _parent);
-                    hp.Process();
+                    if(threadingMode.Equals("Single")) {
+                        hp.Process(); //single threading, process in main thread, one by one
+                    }else
+                    {
+                        //create a new thread to process the request
+                    Thread t=new Thread(new ParameterizedThreadStart(ThreadProc));
+                    t.Start(new TaskInfo(hp));
+                    }
+                    
                 }
                 catch (Exception ex)
                 {
@@ -306,4 +325,29 @@ namespace DNWS
             }
         }
     }
+    //for testing multiple requests (multithreading)
+    //ussing 'dotnet run test' to run the test
+    class Test
+{
+    public static async Task RunTest()
+    {
+        var sw = Stopwatch.StartNew();
+        var tasks = new Task[10];
+        
+        for (int i = 0; i < 10; i++)
+        {
+            int id = i;
+            tasks[i] = Task.Run(async () =>
+            {
+                var client = new HttpClient();
+                Console.WriteLine($"Request {id} sent at {sw.ElapsedMilliseconds}ms");
+                var response = await client.GetAsync("http://localhost:8080/index.html");
+                Console.WriteLine($"Request {id} done at {sw.ElapsedMilliseconds}ms - Status: {response.StatusCode}");
+            });
+        }
+        
+        await Task.WhenAll(tasks);
+        Console.WriteLine($"All done in {sw.ElapsedMilliseconds}ms");
+    }
+}
 }

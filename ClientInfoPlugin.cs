@@ -33,8 +33,9 @@ namespace DNWS
     {
       HTTPResponse response = null;
       StringBuilder sb = new StringBuilder();
-
+      //pull IP and Port from remote endpoint
       IPEndPoint endpoint = IPEndPoint.Parse(request.getPropertyByKey("remoteendpoint"));
+      //pull data from HTTP headers to show client info
       sb.Append("<html><body><pre>");
       sb.AppendFormat("Client IP: {0}<br/>\n", endpoint.Address);
       sb.AppendFormat("Client Port: {0}<br/>\n", endpoint.Port);
@@ -43,7 +44,7 @@ namespace DNWS
       sb.AppendFormat("Accept Encoding: {0}<br/>\n", request.getPropertyByKey("accept-encoding").Trim());
 
       sb.Append("</pre></body></html>");
-
+      //create response HTTP 200 == OK
       response = new HTTPResponse(200);
       response.body = Encoding.UTF8.GetBytes(sb.ToString());
       return response;
